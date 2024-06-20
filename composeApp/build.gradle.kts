@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.compose.compiler)
+    id("com.google.gms.google-services")
 }
 
 kotlin {
@@ -16,21 +17,30 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    
+
     sourceSets {
-        
-        androidMain.dependencies {
-            implementation(compose.preview)
-            implementation(libs.androidx.activity.compose)
+        androidMain {
+            dependencies {
+                implementation(compose.preview)
+                implementation(libs.androidx.activity.compose)
+                implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
+                implementation("com.google.firebase:firebase-analytics-ktx")
+                implementation("com.google.firebase:firebase-auth-ktx")
+                implementation("com.google.firebase:firebase-database-ktx")
+                implementation("com.amazonaws:aws-android-sdk-core:2.22.7")
+                implementation("com.amazonaws:aws-android-sdk-lambda:2.22.7")
+            }
         }
-        commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material)
-            implementation(compose.ui)
-            implementation(compose.components.resources)
-            implementation(compose.components.uiToolingPreview)
-            implementation(projects.shared)
+        commonMain {
+            dependencies {
+                implementation(compose.runtime)
+                implementation(compose.foundation)
+                implementation(compose.material)
+                implementation(compose.ui)
+                implementation(compose.components.resources)
+                implementation(compose.components.uiToolingPreview)
+                implementation(projects.shared)
+            }
         }
     }
 }
@@ -72,3 +82,5 @@ android {
     }
 }
 
+// Apply the Google services plugin at the bottom of the file
+apply(plugin = "com.google.gms.google-services")

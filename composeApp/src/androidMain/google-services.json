@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "549727386392",
+    "project_id": "multicalculator1",
+    "storage_bucket": "multicalculator1.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:549727386392:android:3ee7441dc8b947f0103c6d",
+        "android_client_info": {
+          "package_name": "org.example.multicalculator1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBZB4V1TAztm5jyOYRBZc6bCFHuE6ZBlsI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

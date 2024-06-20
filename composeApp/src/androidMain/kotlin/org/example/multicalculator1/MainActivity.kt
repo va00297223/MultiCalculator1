@@ -1,189 +1,130 @@
 package org.example.multicalculator1
 
-import App
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.Button
-import androidx.compose.material.Text
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import com.google.firebase.auth.FirebaseAuth
+import okhttp3.*
+import java.io.IOException
+import org.example.multicalculator1.BasicCalculator
+import org.example.multicalculator1.ConversionCalculator
+import org.example.multicalculator1.FinancialCalculator
+import org.example.multicalculator1.ScientificCalculator
 
 class MainActivity : ComponentActivity() {
+    private lateinit var auth: FirebaseAuth
+    private val client = OkHttpClient()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Initialize Firebase Auth
+        auth = FirebaseAuth.getInstance()
+
         setContent {
-            CalcView()
+            MultiCalculatorApp()
         }
     }
-}
 
-@Composable
-fun CalcView() {
-    val displayText = remember { mutableStateOf("0") }
-    var leftNumber by rememberSaveable { mutableStateOf(0) }
-    var rightNumber by rememberSaveable { mutableStateOf(0) }
-    var operation by rememberSaveable { mutableStateOf("") }
-    var complete by rememberSaveable { mutableStateOf(false) }
-
-    if (complete && operation.isNotEmpty()) {
-        var answer = 0
-
-        when (operation) {
-            "+" -> answer = leftNumber + rightNumber
-            "-" -> answer = leftNumber - rightNumber
-            "*" -> answer = leftNumber * rightNumber
-            "/" -> {
-                if (rightNumber != 0) {
-                    answer = leftNumber / rightNumber
+    fun signInAnonymously() {
+        auth.signInAnonymously()
+            .addOnCompleteListener(this) { task ->
+                if (task.isSuccessful) {
+                    // Sign in success, update UI with the signed-in user's information
+                    val user = auth.currentUser
+                    // TODO: Handle signed-in user
                 } else {
+                    // If sign in fails, display a message to the user.
+                    // TODO: Handle sign-in failure
                 }
             }
-        }
-        displayText.value = answer.toString()
-
-    }else if (operation.isNotEmpty() && !complete) {
-        displayText.value = rightNumber.toString()
-    }else {
-        displayText.value = leftNumber.toString()
     }
 
-    fun numberPress(btnNum: Int) {
-        if (complete) {
-            leftNumber = 0
-            rightNumber = 0
-            operation = ""
-            complete = false
-        }
+    fun callLambdaFunction(input: String) {
+        val url = "YOUR_AWS_LAMBDA_ENDPOINT_URL"
+        val json = """{"input": "$input"}"""
+        val body = RequestBody.create(MediaType.parse("application/json"), json)
+        val request = Request.Builder()
+            .url(url)
+            .post(body)
+            .build()
 
-        if (operation.isNotBlank() && !complete) {
-            if (rightNumber == 0) {
-                rightNumber = btnNum
-            } else {
-                rightNumber = rightNumber * 10 + btnNum
+        client.newCall(request).enqueue(object : Callback {
+            override fun onResponse(call: Call, response: Response) {
+                val responseData = response.body()?.string()
+                // Handle Lambda response data
             }
-        } else if (operation.isBlank() && !complete) {
-            if (leftNumber == 0) {
-                leftNumber = btnNum
-            } else {
-                leftNumber = leftNumber * 10 + btnNum
+
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
+                // Handle failure
             }
-        }
+        })
     }
+}
 
-    fun operationPress(op: String) {
-        if (!complete) {
-            operation = op
+@Composable
+fun MultiCalculatorApp() {
+    var currentCalculator by remember { mutableStateOf("Basic") }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Multi Calculator") }
+            )
         }
-    }
-
-    fun equalsPress() {
-        complete = true
-    }
-
-    Column(modifier = Modifier
-        .background(Color.LightGray)
-        .fillMaxSize()
-        .height(350.dp)){
-        Row {
-            CalcDisplay(display = displayText)
-        }
-        Row(modifier = Modifier.fillMaxWidth()
-            .padding(horizontal = 5.dp)) {
-            Column {
-                for (i in 7 downTo 1 step 3) {
-                    CalcRow(onPress = { numberPress(it) }, startNum = i, numButtons = 3)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            when (currentCalculator) {
+                "Basic" -> {
+                    BasicCalculator()
                 }
-                Row {
-                    CalcNumericButton(onPress = { numberPress(it) }, number = 0)
-                    CalcEqualsButton(onPress = { equalsPress() })
-                    CalcClearButton(onPress = { numberPress(0) })
+                "Science" -> {
+                    ScientificCalculator()
+                }
+                "Money" -> {
+                    FinancialCalculator()
+                }
+                "Conversion" -> {
+                    ConversionCalculator()
                 }
             }
-            Column {
-                val operations = listOf("+", "-", "*", "/")
-                for (operation in operations) {
-                    CalcOperationButton(onPress = { operationPress(it) }, operation = operation)
-                }
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                CalculatorTabButton("Basic") { currentCalculator = "Basic" }
+                CalculatorTabButton("Science") { currentCalculator = "Science" }
+                CalculatorTabButton("Money") { currentCalculator = "Money" }
+                CalculatorTabButton("Conversion") { currentCalculator = "Conversion" }
             }
         }
     }
 }
 
 @Composable
-fun CalcRow(onPress: (Int) -> Unit, startNum: Int, numButtons: Int) {
-    val endNum = startNum + numButtons
-    Row(modifier = Modifier
-        .padding(0.dp)) {
-        for (i in startNum until endNum) {
-            CalcNumericButton(onPress = onPress,number = i)
-        }
-    }
-}
-
-@Composable
-fun CalcDisplay(display: MutableState<String>) {
-    Text(
-        text = display.value,
+fun CalculatorTabButton(text: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
         modifier = Modifier
-            .height(100.dp)
-            .padding(10.dp)
-            .fillMaxWidth(),
-        fontSize = 45.sp
-    )
-}
-
-@Composable
-fun CalcNumericButton(onPress: (Int) -> Unit, number: Int) {
-    Button(
-        onClick = { onPress(number) },
-        modifier = Modifier
-            .padding(5.dp)
-            .size(85.dp)
+            .weight(1f)
+            .fillMaxWidth()
+            .padding(8.dp)
     ) {
-        Text(text = number.toString(), fontSize = 35.sp)
-    }
-}
-
-@Composable
-fun CalcOperationButton(onPress: (String) -> Unit, operation: String) {
-    Button(
-        /* logic will be added here when button is pressed*/
-        onClick = { onPress(operation) },
-        modifier = Modifier
-            .padding(5.dp)
-            .size(85.dp)
-    ) {
-        Text(text = operation, fontSize = 35.sp)
-    }
-}
-
-@Composable
-fun CalcEqualsButton(onPress: ()-> Unit) {
-    Button(
-        onClick = { onPress() },
-        modifier = Modifier.padding(5.dp)
-            .size(85.dp)
-    ) {
-        Text(text = "=", fontSize = 35.sp)
-    }
-}
-
-@Composable
-fun CalcClearButton(onPress: ()-> Unit) {
-    Button(
-        onClick = { onPress() },
-        modifier = Modifier.padding(5.dp)
-            .size(85.dp)
-    ) {
-        Text(text = "C", fontSize = 35.sp)
+        Text(text = text, fontSize = 18.sp)
     }
 }
