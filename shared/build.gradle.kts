@@ -12,6 +12,8 @@ kotlin {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
         }
+
+        task("testClasses")
     }
     
     listOf(

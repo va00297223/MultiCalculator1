@@ -79,6 +79,7 @@ android {
     }
     dependencies {
         debugImplementation(compose.uiTooling)
+        implementation("com.google.firebase:firebase-auth-ktx")
     }
 }
 

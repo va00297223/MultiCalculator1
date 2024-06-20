@@ -3,128 +3,134 @@ package org.example.multicalculator1
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.amazonaws.auth.CognitoCachingCredentialsProvider
+import com.amazonaws.mobileconnectors.lambdainvoker.LambdaInvokerFactory
+import com.amazonaws.regions.Regions
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
-import okhttp3.*
-import java.io.IOException
-import org.example.multicalculator1.BasicCalculator
-import org.example.multicalculator1.ConversionCalculator
-import org.example.multicalculator1.FinancialCalculator
-import org.example.multicalculator1.ScientificCalculator
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var lambdaInvokerFactory: LambdaInvokerFactory
     private lateinit var auth: FirebaseAuth
-    private val client = OkHttpClient()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize Firebase Auth
+        // Initialize Firebase
+        FirebaseApp.initializeApp(this)
+
+        // Get an instance of FirebaseAuth
         auth = FirebaseAuth.getInstance()
 
-        setContent {
-            MultiCalculatorApp()
-        }
-    }
-
-    fun signInAnonymously() {
-        auth.signInAnonymously()
-            .addOnCompleteListener(this) { task ->
-                if (task.isSuccessful) {
-                    // Sign in success, update UI with the signed-in user's information
-                    val user = auth.currentUser
-                    // TODO: Handle signed-in user
-                } else {
-                    // If sign in fails, display a message to the user.
-                    // TODO: Handle sign-in failure
-                }
-            }
-    }
-
-    fun callLambdaFunction(input: String) {
-        val url = "YOUR_AWS_LAMBDA_ENDPOINT_URL"
-        val json = """{"input": "$input"}"""
-        val body = RequestBody.create(MediaType.parse("application/json"), json)
-        val request = Request.Builder()
-            .url(url)
-            .post(body)
+        // Initialize AWS Lambda invoker
+        val credentialsProvider = CognitoCachingCredentialsProvider(
+            applicationContext,
+            "us-east-2_GhcdFsxLo",  // Replace with your Cognito Identity Pool ID
+            Regions.US_EAST_1  // Replace with your AWS region
+        )
+        lambdaInvokerFactory = LambdaInvokerFactory.builder()
+            .context(applicationContext)
+            .region(Regions.US_EAST_1)  // Replace with your AWS region
+            .credentialsProvider(credentialsProvider)
             .build()
 
-        client.newCall(request).enqueue(object : Callback {
-            override fun onResponse(call: Call, response: Response) {
-                val responseData = response.body()?.string()
-                // Handle Lambda response data
+        setContent {
+            MaterialTheme {
+                Surface(color = Color.White) {
+                    MainScreen()
+                }
             }
-
-            override fun onFailure(call: Call, e: IOException) {
-                e.printStackTrace()
-                // Handle failure
-            }
-        })
-    }
-}
-
-@Composable
-fun MultiCalculatorApp() {
-    var currentCalculator by remember { mutableStateOf("Basic") }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Multi Calculator") }
-            )
         }
-    ) {
+    }
+
+    @Composable
+    fun MainScreen() {
+        var displayText by remember { mutableStateOf("0") }
+        var inputValue by remember { mutableStateOf("") }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
+                .background(Color.LightGray)
         ) {
-            when (currentCalculator) {
-                "Basic" -> {
-                    BasicCalculator()
-                }
-                "Science" -> {
-                    ScientificCalculator()
-                }
-                "Money" -> {
-                    FinancialCalculator()
-                }
-                "Conversion" -> {
-                    ConversionCalculator()
-                }
-            }
+            // Display text or result area
+            Text(
+                text = displayText,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 32.dp),
+                fontSize = 32.sp
+            )
             Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                CalculatorTabButton("Basic") { currentCalculator = "Basic" }
-                CalculatorTabButton("Science") { currentCalculator = "Science" }
-                CalculatorTabButton("Money") { currentCalculator = "Money" }
-                CalculatorTabButton("Conversion") { currentCalculator = "Conversion" }
+
+            // Input field
+            TextField(
+                value = inputValue,
+                onValueChange = { inputValue = it },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Button for invoking Lambda function
+            Button(onClick = {
+                val result = performLambdaInvocation(inputValue)
+                displayText = "Lambda Result: ${result.output}"
+            }) {
+                Text("Invoke Lambda")
+            }
+
+            // Button for signing in with Firebase
+            Button(onClick = {
+                signIn("user@example.com", "password")  // Replace with actual email and password
+            }) {
+                Text("Sign In with Firebase")
             }
         }
     }
+
+    private fun performLambdaInvocation(inputValue: String): LambdaResponse {
+        // Example: AWS Lambda invocation
+        val lambdaInterface = lambdaInvokerFactory.build(LambdaInterface::class.java)
+
+        // Example request
+        val request = LambdaRequest()
+        request.input = inputValue
+
+        // Example invocation
+        return lambdaInterface.invokeLambdaFunction(request)
+    }
+
+    private fun signIn(email: String, password: String) {
+        auth.signInWithEmailAndPassword(email, password)
+            .addOnCompleteListener(this) { task ->
+                if (task.isSuccessful) {
+                    // Sign in success
+                    val user = auth.currentUser
+                    // ... do something with the user ...
+                } else {
+                    // Sign in failed
+                    // ... handle the error ...
+                }
+            }
+    }
 }
 
-@Composable
-fun CalculatorTabButton(text: String, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .weight(1f)
-            .fillMaxWidth()
-            .padding(8.dp)
-    ) {
-        Text(text = text, fontSize = 18.sp)
-    }
+// Define Lambda request and response models
+data class LambdaRequest(var input: String? = null)
+data class LambdaResponse(var output: String? = null)
+
+// Define Lambda interface for invoking functions
+interface LambdaInterface {
+    fun invokeLambdaFunction(request: LambdaRequest): LambdaResponse
 }
