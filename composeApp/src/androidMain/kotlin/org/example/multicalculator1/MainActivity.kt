@@ -21,6 +21,9 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var lambdaInvokerFactory: LambdaInvokerFactory
     private lateinit var auth: FirebaseAuth
+    private var displayText by mutableStateOf("0")
+    private var inputValue by mutableStateOf("")
+    private var selectedCalculator by mutableStateOf("")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,9 +57,6 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun MainScreen() {
-        var displayText by remember { mutableStateOf("0") }
-        var inputValue by remember { mutableStateOf("") }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -82,6 +82,16 @@ class MainActivity : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Calculator selection buttons
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                CalculatorButton("Basic Calculator") {
+                    selectedCalculator = "BasicCalculator"
+                }
+                // Add buttons for other calculators if needed
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Button for invoking Lambda function
             Button(onClick = {
                 val result = performLambdaInvocation(inputValue)
@@ -96,19 +106,40 @@ class MainActivity : ComponentActivity() {
             }) {
                 Text("Sign In with Firebase")
             }
+
+            // Navigate to selected calculator screen
+            if (selectedCalculator.isNotBlank()) {
+                when (selectedCalculator) {
+                    "BasicCalculator" -> BasicCalculator()
+                    // Add cases for other calculators if needed
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun CalculatorButton(text: String, onClick: () -> Unit) {
+        Button(onClick = onClick) {
+            Text(text)
         }
     }
 
     private fun performLambdaInvocation(inputValue: String): LambdaResponse {
-        // Example: AWS Lambda invocation
-        val lambdaInterface = lambdaInvokerFactory.build(LambdaInterface::class.java)
+        try {
+            // Example: AWS Lambda invocation
+            val lambdaInterface = lambdaInvokerFactory.build(LambdaInterface::class.java)
 
-        // Example request
-        val request = LambdaRequest()
-        request.input = inputValue
+            // Example request
+            val request = LambdaRequest()
+            request.input = inputValue
 
-        // Example invocation
-        return lambdaInterface.invokeLambdaFunction(request)
+            // Example invocation
+            return lambdaInterface.invokeLambdaFunction(request)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Handle the error gracefully, perhaps return an error response or show a message
+            return LambdaResponse(output = "Error: ${e.message}")
+        }
     }
 
     private fun signIn(email: String, password: String) {
