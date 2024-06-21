@@ -18,6 +18,9 @@ import com.amazonaws.mobileconnectors.lambdainvoker.LambdaInvokerFactory
 import com.amazonaws.regions.Regions
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.database.ktx.database
+import com.google.firebase.ktx.Firebase
 
 class MainActivity : ComponentActivity() {
 
@@ -33,19 +36,10 @@ class MainActivity : ComponentActivity() {
         // Get an instance of FirebaseAuth
         auth = FirebaseAuth.getInstance()
 
-        // Initialize AWS Lambda invoker
-        val credentialsProvider = CognitoCachingCredentialsProvider(
-            applicationContext,
-            "us-east-2_GhcdFsxLo",  // Replace with your Cognito Identity Pool ID
-            Regions.US_EAST_1  // Replace with your AWS region
-        )
-        lambdaInvokerFactory = LambdaInvokerFactory.builder()
-            .context(applicationContext)
-            .region(Regions.US_EAST_1)  // Replace with your AWS region
-            .credentialsProvider(credentialsProvider)
-            .build()
+        // Initialize AWS Lambda invoker (if needed)
+        // Replace this with your AWS Lambda initialization code if still using it
 
-        // Set content using Jetpack Navigation
+        // Set content using Jetpack Navigation and Firebase Authentication
         setContent {
             MultiCalculatorApp()
         }
@@ -70,11 +64,12 @@ class MainActivity : ComponentActivity() {
         var password by remember { mutableStateOf("") }
         var displayText by remember { mutableStateOf("0") }
         var inputValue by remember { mutableStateOf("") }
+        var loggedIn by remember { mutableStateOf(false) }
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(5.dp)
                 .background(Color.LightGray)
         ) {
             // Display text or result area
@@ -87,12 +82,44 @@ class MainActivity : ComponentActivity() {
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Input field
-            TextField(
-                value = inputValue,
-                onValueChange = { inputValue = it },
-                modifier = Modifier.fillMaxWidth()
-            )
+            if (loggedIn) {
+                // User is logged in, display logout button
+                Button(onClick = {
+                    auth.signOut()
+                    loggedIn = false
+                    navController.navigate("main")
+                }) {
+                    Text("Logout")
+                }
+            } else {
+                // User is not logged in, display login fields and button
+                // Email input field
+                TextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Password input field
+                TextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Button for signing in with Firebase
+                Button(onClick = {
+                    signIn(email, password, navController)
+                }) {
+                    Text("Sign In")
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -115,32 +142,12 @@ class MainActivity : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Email input field
+            // Input field
             TextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email") },
+                value = inputValue,
+                onValueChange = { inputValue = it },
                 modifier = Modifier.fillMaxWidth()
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Password input field
-            TextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Password") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Button for signing in with Firebase
-            Button(onClick = {
-                signIn(email, password, navController)
-            }) {
-                Text("Sign In with Firebase")
-            }
         }
     }
 
@@ -167,11 +174,23 @@ class MainActivity : ComponentActivity() {
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
                     // Sign in success, navigate to the BasicCalculator screen
+                    val user = auth.currentUser
+                    user?.let {
+                        saveUserData(it)
+                    }
                     navController.navigate("basicCalculator")
                 } else {
-                    // Sign in failed, handle the error (e.g., show a toast)
+                    // Handle sign-in failure
                 }
             }
+    }
+
+    private fun saveUserData(user: FirebaseUser) {
+        val database = Firebase.database
+        val usersRef = database.getReference("users")
+        val userId = user.uid
+        val userData = User(user.email ?: "", "John Doe") // Example data, replace with actual user data
+        usersRef.child(userId).setValue(userData)
     }
 
     @Composable
@@ -180,6 +199,12 @@ class MainActivity : ComponentActivity() {
         BasicCalculator()
     }
 }
+
+// Define User data class
+data class User(
+    val email: String,
+    val displayName: String
+)
 
 // Define Lambda request and response models
 data class LambdaRequest(var input: String? = null)
