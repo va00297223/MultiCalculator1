@@ -1,12 +1,15 @@
 package org.example.multicalculator1
 
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -47,13 +50,11 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun MultiCalculatorApp() {
-        // NavHost setup
         val navController = rememberNavController()
 
-        // Navigation graph
         NavHost(navController = navController, startDestination = "main") {
             composable("main") { MainScreen(navController = navController) }
-            composable("basicCalculator") { BasicCalculatorScreen() }
+            composable("calculatorSelection") { CalculatorSelectionScreen(navController = navController) }
             // Add more destinations as needed for other calculators or screens
         }
     }
@@ -69,7 +70,7 @@ class MainActivity : ComponentActivity() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(5.dp)
+                .padding(16.dp)
                 .background(Color.LightGray)
         ) {
             // Display text or result area
@@ -115,19 +116,16 @@ class MainActivity : ComponentActivity() {
 
                 // Button for signing in with Firebase
                 Button(onClick = {
-                    signIn(email, password, navController)
+                    signIn(email, password, navController) { success, errorMessage ->
+                        if (success) {
+                            loggedIn = true
+                        } else {
+                            Toast.makeText(this@MainActivity, "Sign in failed: $errorMessage", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }) {
                     Text("Sign In")
                 }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Button for opening BasicCalculator screen
-            Button(onClick = {
-                navController.navigate("basicCalculator")
-            }) {
-                Text("Open Basic Calculator")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -169,18 +167,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun signIn(email: String, password: String, navController: NavHostController) {
+    private fun signIn(email: String, password: String, navController: NavHostController, onResult: (Boolean, String?) -> Unit) {
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    // Sign in success, navigate to the BasicCalculator screen
+                    Log.d("MainActivity", "Sign in success")
+                    // Sign in success, navigate to the Calculator Selection screen
                     val user = auth.currentUser
                     user?.let {
                         saveUserData(it)
                     }
-                    navController.navigate("basicCalculator")
+                    navController.navigate("calculatorSelection")
+                    onResult(true, null)
                 } else {
+                    Log.e("MainActivity", "Sign in failed", task.exception)
                     // Handle sign-in failure
+                    onResult(false, task.exception?.localizedMessage)
                 }
             }
     }
@@ -194,9 +196,36 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun BasicCalculatorScreen() {
-        // Placeholder for BasicCalculator UI
-        BasicCalculator()
+    fun CalculatorSelectionScreen(navController: NavHostController) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .background(Color.LightGray),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Select Calculator",
+                modifier = Modifier.padding(vertical = 32.dp),
+                fontSize = 32.sp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(onClick = {
+                navController.navigate("basicCalculator")
+            }) {
+                Text("Basic Calculator")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Add buttons for other calculators if needed
+            // Button(onClick = { /* Navigate to another calculator */ }) {
+            //     Text("Advanced Calculator")
+            // }
+        }
     }
 }
 
