@@ -11,6 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.*
 import com.amazonaws.auth.CognitoCachingCredentialsProvider
 import com.amazonaws.mobileconnectors.lambdainvoker.LambdaInvokerFactory
 import com.amazonaws.regions.Regions
@@ -21,9 +23,6 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var lambdaInvokerFactory: LambdaInvokerFactory
     private lateinit var auth: FirebaseAuth
-    private var displayText by mutableStateOf("0")
-    private var inputValue by mutableStateOf("")
-    private var selectedCalculator by mutableStateOf("")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,17 +45,32 @@ class MainActivity : ComponentActivity() {
             .credentialsProvider(credentialsProvider)
             .build()
 
+        // Set content using Jetpack Navigation
         setContent {
-            MaterialTheme {
-                Surface(color = Color.White) {
-                    MainScreen()
-                }
-            }
+            MultiCalculatorApp()
         }
     }
 
     @Composable
-    fun MainScreen() {
+    fun MultiCalculatorApp() {
+        // NavHost setup
+        val navController = rememberNavController()
+
+        // Navigation graph
+        NavHost(navController = navController, startDestination = "main") {
+            composable("main") { MainScreen(navController = navController) }
+            composable("basicCalculator") { BasicCalculatorScreen() }
+            // Add more destinations as needed for other calculators or screens
+        }
+    }
+
+    @Composable
+    fun MainScreen(navController: NavHostController) {
+        var email by remember { mutableStateOf("") }
+        var password by remember { mutableStateOf("") }
+        var displayText by remember { mutableStateOf("0") }
+        var inputValue by remember { mutableStateOf("") }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -82,12 +96,11 @@ class MainActivity : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Calculator selection buttons
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                CalculatorButton("Basic Calculator") {
-                    selectedCalculator = "BasicCalculator"
-                }
-                // Add buttons for other calculators if needed
+            // Button for opening BasicCalculator screen
+            Button(onClick = {
+                navController.navigate("basicCalculator")
+            }) {
+                Text("Open Basic Calculator")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -100,27 +113,34 @@ class MainActivity : ComponentActivity() {
                 Text("Invoke Lambda")
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Email input field
+            TextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("Email") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Password input field
+            TextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Password") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Button for signing in with Firebase
             Button(onClick = {
-                signIn("user@example.com", "password")  // Replace with actual email and password
+                signIn(email, password, navController)
             }) {
                 Text("Sign In with Firebase")
             }
-
-            // Navigate to selected calculator screen
-            if (selectedCalculator.isNotBlank()) {
-                when (selectedCalculator) {
-                    "BasicCalculator" -> BasicCalculator()
-                    // Add cases for other calculators if needed
-                }
-            }
-        }
-    }
-
-    @Composable
-    fun CalculatorButton(text: String, onClick: () -> Unit) {
-        Button(onClick = onClick) {
-            Text(text)
         }
     }
 
@@ -142,18 +162,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun signIn(email: String, password: String) {
+    private fun signIn(email: String, password: String, navController: NavHostController) {
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    // Sign in success
-                    val user = auth.currentUser
-                    // ... do something with the user ...
+                    // Sign in success, navigate to the BasicCalculator screen
+                    navController.navigate("basicCalculator")
                 } else {
-                    // Sign in failed
-                    // ... handle the error ...
+                    // Sign in failed, handle the error (e.g., show a toast)
                 }
             }
+    }
+
+    @Composable
+    fun BasicCalculatorScreen() {
+        // Placeholder for BasicCalculator UI
+        BasicCalculator()
     }
 }
 

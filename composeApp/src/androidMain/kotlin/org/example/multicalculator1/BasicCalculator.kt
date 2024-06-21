@@ -12,35 +12,42 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun BasicCalculator() {
     var displayText by remember { mutableStateOf("0") }
-    var leftNumber by remember { mutableStateOf(0) }
-    var rightNumber by remember { mutableStateOf(0) }
+    var leftNumber by remember { mutableStateOf(0.0) }
+    var rightNumber by remember { mutableStateOf(0.0) }
     var operation by remember { mutableStateOf("") }
     var complete by remember { mutableStateOf(false) }
+    var currentInput by remember { mutableStateOf("") }
 
     if (complete && operation.isNotEmpty()) {
-        var answer = 0
+        var answer = 0.0
 
         when (operation) {
             "+" -> answer = leftNumber + rightNumber
             "-" -> answer = leftNumber - rightNumber
             "*" -> answer = leftNumber * rightNumber
             "/" -> {
-                if (rightNumber != 0) {
+                if (rightNumber != 0.0) {
                     answer = leftNumber / rightNumber
+                }
+            }
+            "%" -> {
+                if (rightNumber != 0.0) {
+                    answer = leftNumber % rightNumber
                 }
             }
         }
         displayText = answer.toString()
     } else if (operation.isNotEmpty() && !complete) {
-        displayText = rightNumber.toString()
+        displayText = "$leftNumber $operation $rightNumber"
     } else {
-        displayText = leftNumber.toString()
+        displayText = currentInput.ifBlank { "0" }
     }
 
-    Column(modifier = Modifier
-        .background(Color.LightGray)
-        .fillMaxSize()
-        .padding(16.dp)
+    Column(
+        modifier = Modifier
+            .background(Color.LightGray)
+            .fillMaxSize()
+            .padding(16.dp)
     ) {
         Text(
             text = displayText,
@@ -49,57 +56,87 @@ fun BasicCalculator() {
                 .padding(vertical = 32.dp),
             fontSize = 48.sp
         )
-        for (i in listOf(7, 4, 1, 0)) {
+
+        // Updated loop to create buttons in rows with 4 buttons each
+        val buttons = listOf(
+            listOf("C", "⌫", "%", "/"),
+            listOf("7", "8", "9", "*"),
+            listOf("4", "5", "6", "-"),
+            listOf("1", "2", "3", "+"),
+            listOf("0", ".", "=" )
+        )
+
+        for (row in buttons) {
             Row {
-                for (j in 0..2) {
-                    val num = i + j
-                    if (num in 0..9) {
-                        Button(onClick = {
-                            if (complete) {
-                                leftNumber = 0
-                                rightNumber = 0
+                for (buttonText in row) {
+                    Button(onClick = {
+                        when (buttonText) {
+                            "C" -> {
+                                leftNumber = 0.0
+                                rightNumber = 0.0
                                 operation = ""
                                 complete = false
+                                currentInput = ""
                             }
-                            if (operation.isNotBlank() && !complete) {
-                                if (rightNumber == 0) {
-                                    rightNumber = num
-                                } else {
-                                    rightNumber = rightNumber * 10 + num
-                                }
-                            } else if (operation.isBlank() && !complete) {
-                                if (leftNumber == 0) {
-                                    leftNumber = num
-                                } else {
-                                    leftNumber = leftNumber * 10 + num
+                            in "0".."9" -> {
+                                currentInput += buttonText
+                                if (operation.isNotBlank() && !complete) {
+                                    rightNumber = currentInput.toDoubleOrNull() ?: 0.0
+                                } else if (operation.isBlank() && !complete) {
+                                    leftNumber = currentInput.toDoubleOrNull() ?: 0.0
                                 }
                             }
-                        }, modifier = Modifier
-                            .padding(8.dp)
-                            .weight(1f)
-                            .height(80.dp)) {
-                            Text(text = num.toString(), fontSize = 32.sp)
+                            "." -> {
+                                if (!currentInput.contains(".")) {
+                                    currentInput += "."
+                                }
+                            }
+                            "⌫" -> {
+                                currentInput = if (currentInput.isNotEmpty()) {
+                                    currentInput.dropLast(1)
+                                } else {
+                                    ""
+                                }
+                                if (operation.isNotBlank()) {
+                                    rightNumber = currentInput.toDoubleOrNull() ?: 0.0
+                                } else {
+                                    leftNumber = currentInput.toDoubleOrNull() ?: 0.0
+                                }
+                            }
+                            "+" -> {
+                                operation = "+"
+                                leftNumber = currentInput.toDoubleOrNull() ?: 0.0
+                                currentInput = ""
+                            }
+                            "-" -> {
+                                operation = "-"
+                                leftNumber = currentInput.toDoubleOrNull() ?: 0.0
+                                currentInput = ""
+                            }
+                            "*" -> {
+                                operation = "*"
+                                leftNumber = currentInput.toDoubleOrNull() ?: 0.0
+                                currentInput = ""
+                            }
+                            "/" -> {
+                                operation = "/"
+                                leftNumber = currentInput.toDoubleOrNull() ?: 0.0
+                                currentInput = ""
+                            }
+                            "%" -> {
+                                operation = "%"
+                                leftNumber = currentInput.toDoubleOrNull() ?: 0.0
+                                currentInput = ""
+                            }
+                            "=" -> complete = true
                         }
+                    }, modifier = Modifier
+                        .padding(8.dp)
+                        .weight(1f)
+                        .height(65.dp)) {
+                        Text(text = buttonText, fontSize = 32.sp)
                     }
                 }
-            }
-        }
-        Row {
-            Button(onClick = {
-                operation = "+"
-            }, modifier = Modifier
-                .padding(8.dp)
-                .weight(1f)
-                .height(80.dp)) {
-                Text(text = "+", fontSize = 32.sp)
-            }
-            Button(onClick = {
-                complete = true
-            }, modifier = Modifier
-                .padding(8.dp)
-                .weight(1f)
-                .height(80.dp)) {
-                Text(text = "=", fontSize = 32.sp)
             }
         }
     }

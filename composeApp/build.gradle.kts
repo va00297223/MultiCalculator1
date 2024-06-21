@@ -29,6 +29,7 @@ kotlin {
                 implementation("com.google.firebase:firebase-database-ktx")
                 implementation("com.amazonaws:aws-android-sdk-core:2.22.7")
                 implementation("com.amazonaws:aws-android-sdk-lambda:2.22.7")
+                implementation("androidx.navigation:navigation-compose:2.4.0-alpha10")
             }
         }
         commonMain {
