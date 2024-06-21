@@ -25,11 +25,12 @@ kotlin {
                 implementation(libs.androidx.activity.compose)
                 implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
                 implementation("com.google.firebase:firebase-analytics-ktx")
+                // Only needed in androidMain for authentication
                 implementation("com.google.firebase:firebase-auth-ktx")
                 implementation("com.google.firebase:firebase-database-ktx")
                 implementation("com.amazonaws:aws-android-sdk-core:2.22.7")
                 implementation("com.amazonaws:aws-android-sdk-lambda:2.22.7")
-                implementation("androidx.navigation:navigation-compose:2.4.0-alpha10")
+                implementation("androidx.navigation:navigation-compose:2.4.0-alpha09")
             }
         }
         commonMain {
@@ -80,9 +81,15 @@ android {
     }
     dependencies {
         debugImplementation(compose.uiTooling)
-        implementation("com.google.firebase:firebase-auth-ktx")
+        // Only needed in android for authentication (if not already included in source set)
+        // implementation("com.google.firebase:firebase-auth-ktx")
     }
 }
 
 // Apply the Google services plugin at the bottom of the file
 apply(plugin = "com.google.gms.google-services")
+
+// Add your Firebase Firestore dependency here (ensure it's within dependencies block)
+dependencies {
+    implementation(libs.firebase.firestore.ktx)
+}
